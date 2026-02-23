@@ -1,0 +1,12 @@
+# Build output
+bin/
+obj/
+**/bin/
+**/obj/
+
+# Rider / IDE
+.idea/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
