@@ -23,7 +23,7 @@ services:
     env_file: ".env"
     environment:
       ASPNETCORE_URLS: "http://0.0.0.0:5000"
-      ConnectionStrings__Mssql: "BrokenConnectionString=True"
+      ConnectionStrings__Mssql: "Server=mssql,1433;Database=${DB_NAME};User Id=sa;Password=${MSSQL_SA_PASSWORD};TrustServerCertificate=True"
       App__Version: "${APP_VERSION}"
     depends_on:
       - mssql
