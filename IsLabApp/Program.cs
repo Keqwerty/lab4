@@ -40,7 +40,8 @@ app.MapGet("/version", () =>
     return Results.Ok(new
     {
         name = appName,
-        version = appVersion
+        version = appVersion,
+        release = "Lab11"
     });
 })
 .WithName("GetVersion")
@@ -190,4 +191,8 @@ record Note(int Id, string Title, string Text, DateTimeOffset CreatedAt);
 record WeatherForecast(DateOnly Date, int TemperatureC, string? Summary)
 {
     public int TemperatureF => 32 + (int)(TemperatureC / 0.5556);
+}
+
+public partial class Program
+{
 }

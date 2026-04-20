@@ -4,9 +4,9 @@ services:
   mssql:
     image: mcr.microsoft.com/mssql/server:2022-latest
     container_name: is-mssql
+    env_file: ".env"
     environment:
       ACCEPT_EULA: "Y"
-      MSSQL_SA_PASSWORD: "${SA_PASSWORD}"
     volumes:
       - mssql_data:/var/opt/mssql
     networks:
@@ -14,12 +14,13 @@ services:
     restart: unless-stopped
 
   app:
-    image: isapp:lab8
+    image: "${APP_IMAGE:-ghcr.io/keqwerty/lab4:latest}"
     # если нужен build вместо готового образа:
     # build:
     #   context: .
     #   dockerfile: Dockerfile
     container_name: is-app
+    env_file: ".env"
     environment:
       ASPNETCORE_URLS: "http://0.0.0.0:5000"
       ConnectionStrings__Mssql: "Server=mssql,1433;Database=${DB_NAME};User Id=sa;Password=${MSSQL_SA_PASSWORD};TrustServerCertificate=True"
