@@ -15,19 +15,49 @@ permissions:
 jobs:
   deploy:
     if: ${{ github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push' && github.event.workflow_run.head_branch == 'main' }}
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
 
     steps:
-      - name: Login to GHCR
+      - name: Configure SSH
         env:
-          GHCR_TOKEN: ${{ secrets.GHCR_TOKEN }}
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_SSH_PORT: ${{ secrets.DEPLOY_SSH_PORT }}
         run: |
-          echo "$GHCR_TOKEN" | docker login ghcr.io --username "${{ github.repository_owner }}" --password-stdin
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
 
-      - name: Deploy with Docker Compose
+          printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+
+          port="${DEPLOY_SSH_PORT:-22}"
+          ssh-keyscan -p "$port" -H "$DEPLOY_HOST" >> ~/.ssh/known_hosts
+
+      - name: Deploy with Docker Compose over SSH
         env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
           DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
+          DEPLOY_SSH_PORT: ${{ secrets.DEPLOY_SSH_PORT }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          GHCR_TOKEN: ${{ secrets.GHCR_TOKEN }}
+          GHCR_USERNAME: ${{ github.repository_owner }}
+        shell: bash
         run: |
+          port="${DEPLOY_SSH_PORT:-22}"
+          deploy_path_b64="$(printf '%s' "$DEPLOY_PATH" | base64 -w0)"
+          ghcr_token_b64="$(printf '%s' "$GHCR_TOKEN" | base64 -w0)"
+          ghcr_username_b64="$(printf '%s' "$GHCR_USERNAME" | base64 -w0)"
+
+          ssh -i ~/.ssh/deploy_key -p "$port" "$DEPLOY_USER@$DEPLOY_HOST" \
+            "DEPLOY_PATH_B64='$deploy_path_b64' GHCR_TOKEN_B64='$ghcr_token_b64' GHCR_USERNAME_B64='$ghcr_username_b64' bash -s" <<'REMOTE'
+          set -euo pipefail
+
+          DEPLOY_PATH="$(printf '%s' "$DEPLOY_PATH_B64" | base64 -d)"
+          GHCR_TOKEN="$(printf '%s' "$GHCR_TOKEN_B64" | base64 -d)"
+          GHCR_USERNAME="$(printf '%s' "$GHCR_USERNAME_B64" | base64 -d)"
+
+          echo "$GHCR_TOKEN" | docker login ghcr.io --username "$GHCR_USERNAME" --password-stdin
           cd "$DEPLOY_PATH"
           docker compose pull
           docker compose up -d
+          REMOTE
